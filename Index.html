@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SportHub — Live Sports (Legal Demo)</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--radius:12px}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;line-height:1.6;color:#111;background:#fff}
+  header{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #eee}
+  .container{max-width:1200px;margin:0 auto;padding:16px}
+  nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{font-weight:800;font-size:18px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{padding:8px 12px;border:1px solid #ddd;border-radius:999px;background:#fff;cursor:pointer}
+  .tab.active{background:#111;color:#fff;border-color:#111}
+  main{padding:18px 16px}
+  .layout{display:grid;grid-template-columns:1.3fr .7fr;gap:16px}
+  .player{aspect-ratio:16/9;width:100%;background:#000;border-radius:var(--radius);overflow:hidden}
+  .player iframe{width:100%;height:100%;border:0}
+  .panel{border:1px solid #eee;border-radius:var(--radius);padding:14px}
+  h2{font-size:18px;margin-bottom:8px}
+  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .card{border:1px solid #eee;border-radius:var(--radius);padding:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .badge{font-size:12px;border:1px solid #ddd;border-radius:999px;padding:2px 8px}
+  .badge.live{color:#b00020;border-color:#b00020}
+  .muted{color:#666}
+  .channel{display:flex;align-items:center;gap:10px}
+  .channel img{width:28px;height:28px;border-radius:6px}
+  footer{padding:28px 16px;text-align:center;color:#666;border-top:1px solid #eee;margin-top:24px}
+  @media (max-width:900px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <nav>
+      <div class="brand">🏟️ SportHub</div>
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-view="all">All</button>
+        <button class="tab" data-view="football">Football</button>
+        <button class="tab" data-view="cricket">Cricket</button>
+        <button class="tab" data-view="channels">Channels</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <div class="layout">
+    <section>
+      <div class="player">
+        <!-- কেবল অফিসিয়াল/অনুমোদিত স্ট্রিম allowlist করা -->
+        <iframe id="player" src="https://www.youtube.com/embed/live_stream?channel=UCiN-GY9Vf9PZcO2gGdQK1DA"
+          allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Live Player"></iframe>
+      </div>
+      <div class="panel" style="margin-top:12px">
+        <h2>Live / Upcoming</h2>
+        <p class="muted">শুধুমাত্র অফিসিয়াল/লাইসেন্সড স্ট্রিম যুক্ত করুন। পাইরেটেড/রিস্ট্রিম নিষিদ্ধ।</p>
+      </div>
+      <div style="margin-top:12px">
+        <h2 style="margin-bottom:6px">Matches</h2>
+        <div id="matchGrid" class="grid"></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <h2>Channels (Official)</h2>
+      <div id="channelList" class="grid"></div>
+    </aside>
+  </div>
+</main>
+
+<footer>
+  © <span id="year"></span> SportHub • Terms • Privacy • Contact
+  <div class="muted" style="margin-top:6px">All trademarks & streams belong to their rightful owners.</div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // ডেমো ডেটা (পরে API/অ্যাডমিন প্যানেল থেকে আসবে)
+  const matches = [
+    {id:1, sport:'football', title:'Liverpool vs Bournemouth', time:'20:00', status:'LIVE',
+     embed:'https://www.youtube.com/embed/live_stream?channel=UCiN-GY9Vf9PZcO2gGdQK1DA'},
+    {id:2, sport:'cricket', title:'Bangladesh vs Tigers XI', time:'21:30', status:'UPCOMING',
+     embed:'https://www.youtube.com/embed/aqz-KE-bpKQ'},
+    {id:3, sport:'football', title:'United vs City', time:'23:00', status:'UPCOMING',
+     embed:'https://www.youtube.com/embed/dQw4w9WgXcQ'}
+  ];
+
+  const channels = [
+    {name:'Official Football Channel', logo:'https://i.imgur.com/8Km9tLL.png',
+     embed:'https://www.youtube.com/embed/live_stream?channel=UCiN-GY9Vf9PZcO2gGdQK1DA'},
+    {name:'Cricket Board Live', logo:'https://i.imgur.com/8Km9tLL.png',
+     embed:'https://www.youtube.com/embed/aqz-KE-bpKQ'}
+  ];
+
+  const allowlist = ['www.youtube.com','youtube.com']; // এখানে কেবল লিগ্যাল ডোমেইন রাখো
+  const player = document.getElementById('player');
+  const grid = document.getElementById('matchGrid');
+  const chan = document.getElementById('channelList');
+  const tabs = document.querySelectorAll('#tabs .tab');
+
+  function safeLoad(url){
+    try{
+      const u=new URL(url);
+      if(!allowlist.includes(u.hostname)){ alert('Only official/authorized streams are allowed.'); return; }
+      player.src=url; window.scrollTo({top:0,behavior:'smooth'});
+    }catch(e){}
+  }
+
+  function renderMatches(filter='all'){
+    grid.innerHTML='';
+    matches.filter(m=> filter==='all' ? true : m.sport===filter)
+      .forEach(m=>{
+        const el=document.createElement('div'); el.className='card';
+        el.innerHTML=`
+          <div class="row">
+            <strong>${m.title}</strong>
+            <span class="badge ${m.status==='LIVE'?'live':''}">${m.status}</span>
+          </div>
+          <div class="muted" style="margin:6px 0 10px">Kickoff: ${m.time} • ${m.sport}</div>
+          <button data-embed="${m.embed}" style="padding:8px 12px;border:1px solid #111;border-radius:8px;cursor:pointer">Watch</button>
+        `;
+        el.querySelector('button').onclick=(e)=> safeLoad(e.target.dataset.embed);
+        grid.appendChild(el);
+      });
+  }
+
+  function renderChannels(){
+    chan.innerHTML='';
+    channels.forEach(c=>{
+      const el=document.createElement('div'); el.className='card';
+      el.innerHTML=`
+        <div class="channel">
+          <img src="${c.logo}" alt="">
+          <div>
+            <div><strong>${c.name}</strong></div>
+            <div class="muted">official</div>
+          </div>
+        </div>
+        <button data-embed="${c.embed}" style="margin-top:10px;padding:8px 12px;border:1px solid #111;border-radius:8px;cursor:pointer">Play</button>
+      `;
+      el.querySelector('button').onclick=(e)=> safeLoad(e.target.dataset.embed);
+      chan.appendChild(el);
+    });
+  }
+
+  tabs.forEach(t=> t.onclick=()=>{
+    tabs.forEach(x=>x.classList.remove('active')); t.classList.add('active');
+    const view=t.dataset.view;
+    if(view==='channels'){ document.querySelector('aside').scrollIntoView({behavior:'smooth'}); }
+    renderMatches(view);
+  });
+	
+	  renderMatches('all'); renderChannels();
+</script>
+</body>
+</html>
